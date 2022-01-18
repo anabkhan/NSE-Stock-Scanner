@@ -1,0 +1,13 @@
+# docker-compose.yml
+version: '3.2'
+services:
+   jupyter-notebook:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    ports:
+      - '9999:8888'
+    container_name: jupyter-notebook
+    restart: "no"
