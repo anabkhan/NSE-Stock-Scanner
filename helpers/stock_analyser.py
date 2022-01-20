@@ -12,12 +12,12 @@ NSE = NSEData()
 
 
 class AnalyseStocks(DataHandler):
-    def __init__(self, check_fresh = True):
+    def __init__(self, check_fresh = True, force_update = False):
         '''
         args:
             path: Path where all the stock files are saved
         '''
-        super().__init__(check_fresh = check_fresh)
+        super().__init__(check_fresh = check_fresh,  force_update =  force_update)
         self.registered_stocks = self.read_data()['registered_stocks']
         self.colors = self.read_data()['colors']
         self.rising = {}

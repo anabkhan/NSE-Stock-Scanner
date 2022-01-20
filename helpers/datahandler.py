@@ -6,8 +6,9 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 import numpy as np
 
-from os import listdir, mkdir
+from os import listdir, mkdir, remove
 from shutil import rmtree
+import os.path
 from os.path import join, expanduser
 
 import json
@@ -24,7 +25,7 @@ drop = ['SERIES','PREV. CLOSE','VWAP','VOLUME','VALUE','NO OF TRADES', 'LTP']
 
 
 class DataHandler:
-    def __init__(self, data_path = './data', check_fresh = False):
+    def __init__(self, data_path = './data', check_fresh = False, force_update = False):
         '''
         '''
         self.present = date.today()
@@ -35,6 +36,7 @@ class DataHandler:
         self.read_data = DataHandler.read_data # because it is static
         self.data = self.read_data()
         self.all_stocks = self.data['all_stocks']
+        self.force_update = force_update
         
         if check_fresh:
             print('Checking Fresh Data.....')
@@ -170,6 +172,9 @@ class DataHandler:
         returns: DataFrame of that stock
         '''
         if kind == 'daily':
+            # print('check if data exists',join(self.data_path,self.all_stocks[name]))
+            # if not os.path.exists(join(self.data_path,self.all_stocks[name])):
+            #     self.download_new(name)
             df = pd.read_csv(join(self.data_path,self.all_stocks[name]))
             df['DATE'] = pd.to_datetime(df['DATE'])
 
@@ -207,11 +212,20 @@ class DataHandler:
             path: Path to the directory where downloaded files have to be stored
          '''
         try:
-            df = self.open_live_stock_data(name)
-            df['DATE'] = pd.to_datetime(df['DATE'])
+            # print('Downloading new stock data for', name , end='\r')
+            # If file already exists then dont download
             ID, NAME, _ = self.all_stocks[name].split('_')
             save = f"{path}/{ID}_{NAME}_{str(self.present)}.csv"
-            df.to_csv(save,index=None)
+            if not os.path.exists(f"{path}/{ID}_{NAME}_{str(self.present)}.csv") or self.force_update:
+                print('... ', name , end='\r')
+                df = self.open_live_stock_data(name)
+                df['DATE'] = pd.to_datetime(df['DATE'])
+                remove(f"{path}/{self.all_stocks[name]}")
+                df.to_csv(save,index=None)
+
+                #Once downloaded remove the old file with path as ./data/self.all_stocks[name]
+                #update the data.json file
+            # print('Downloaded new stock data for', name , end='\r')
         except Exception as e:
             print(name,'----',e)
 
@@ -237,14 +251,15 @@ class DataHandler:
         Check and download new available or unfinished data
         '''
         name = random.choice(self.data['nifty_50'])
-        old = self.open_downloaded_stock(name)
-        new = self.open_live_stock_data(name)
-        if old.iloc[0,0] < new.iloc[0,0]:
-            print('New Data Available. Downloading now....')
-            
-            rmtree(self.data_path)
-            mkdir(self.data_path)
-            self.multiprocess_download_stocks()
+        # old = self.open_downloaded_stock(name)
+        # new = self.open_live_stock_data(name)
+        # if old.iloc[0,0] < new.iloc[0,0]:
+        print('New Data Available. Downloading now....')
+        
+        # print('removing old', self.data_path)
+        # rmtree(self.data_path)
+        # mkdir(self.data_path)
+        self.multiprocess_download_stocks()
         
         missing_list = set(self.all_stocks.keys()) - set([i.split('_')[0] for i in listdir('./data')])
         if len(missing_list):
@@ -266,6 +281,7 @@ class DataHandler:
             self.data['all_stocks'][key] = file
 
         self.update_data(self.data)
+        print("Data is refreshed now")
 
     
 
